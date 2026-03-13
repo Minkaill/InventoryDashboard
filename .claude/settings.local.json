@@ -3,7 +3,10 @@
     "allow": [
       "Bash(cd /Users/minkail/Desktop/InventoryDashboard/backend && npm install 2>&1)",
       "Bash(cd /Users/minkail/Desktop/InventoryDashboard/backend && npx tsc --noEmit 2>&1)",
-      "Bash(cd /Users/minkail/Desktop/InventoryDashboard/frontend && npx tsc --noEmit 2>&1)"
+      "Bash(cd /Users/minkail/Desktop/InventoryDashboard/frontend && npx tsc --noEmit 2>&1)",
+      "Bash(npm run:*)",
+      "Bash(lsof -ti:3000,5173 | xargs kill -9 2>/dev/null; sleep 1; echo \"done\")",
+      "Bash(git add:*)"
     ]
   }
 }
