@@ -25,9 +25,9 @@ function relativeTime(dateStr: string): string {
   return `${day} дн. назад`;
 }
 
-const dotColor: Record<Status, string> = {
+const statusDot: Record<Status, string> = {
   ok: '#22c55e',
-  low: '#f97316',
+  low: '#f59e0b',
   critical: '#ef4444',
 };
 
@@ -37,51 +37,73 @@ export default function FlavorBlock({ block, onClick }: Props) {
   return (
     <button
       onClick={onClick}
-      className="relative w-full text-left rounded-2xl border bg-gray-900 hover:bg-gray-800 active:scale-[0.98] transition-all p-6 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
-      style={{ borderColor: block.color + '44' }}
+      className="group w-full text-left rounded-xl p-5 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      style={{
+        background: '#16181d',
+        border: '1px solid #1e2028',
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLElement).style.borderColor = '#2a2d38';
+        (e.currentTarget as HTMLElement).style.background = '#18191f';
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLElement).style.borderColor = '#1e2028';
+        (e.currentTarget as HTMLElement).style.background = '#16181d';
+      }}
     >
-      {/* Top color bar */}
-      <div
-        className="absolute top-0 left-0 right-0 h-[3px] rounded-t-2xl"
-        style={{ backgroundColor: block.color }}
-      />
-
-      {/* Status row */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-gray-600 text-xs uppercase tracking-widest font-semibold">Запас</span>
-        <span className="relative flex h-3 w-3">
+      {/* Header row */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <div
+            className="w-2 h-2 rounded-full flex-shrink-0"
+            style={{ backgroundColor: block.color }}
+          />
+          <span className="text-xs font-medium truncate" style={{ color: '#6b7280' }}>
+            {block.name}
+          </span>
+        </div>
+        {/* Status dot */}
+        <div className="relative flex h-2 w-2 flex-shrink-0 mt-0.5">
           {status !== 'ok' && (
             <span
               className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60"
-              style={{ backgroundColor: dotColor[status] }}
+              style={{ backgroundColor: statusDot[status] }}
             />
           )}
           <span
-            className="relative inline-flex rounded-full h-3 w-3"
-            style={{ backgroundColor: dotColor[status] }}
+            className="relative inline-flex h-2 w-2 rounded-full"
+            style={{ backgroundColor: statusDot[status] }}
           />
-        </span>
+        </div>
       </div>
-
-      {/* Name */}
-      <h2 className="text-base font-bold text-white mb-3 leading-snug">{block.name}</h2>
 
       {/* Quantity */}
       <div
-        className="text-6xl font-black leading-none mb-4 tabular-nums"
-        style={{ color: block.color }}
+        className="font-display tabular-nums leading-none mb-4"
+        style={{ fontSize: '3.5rem', color: '#ffffff' }}
       >
         {block.quantity}
       </div>
 
+      {/* Divider */}
+      <div style={{ height: '1px', background: '#1e2028', marginBottom: '12px' }} />
+
       {/* Last transaction */}
       {block.last_transaction_at ? (
-        <div className="text-gray-600 text-xs">
-          {block.last_type === 'incoming' ? '↑' : '↓'}{' '}
-          {block.last_quantity} · {relativeTime(block.last_transaction_at)}
+        <div className="flex items-center gap-1.5">
+          <span
+            className="text-xs"
+            style={{ color: block.last_type === 'incoming' ? '#22c55e' : '#9ca3af' }}
+          >
+            {block.last_type === 'incoming' ? '+' : '−'}{block.last_quantity}
+          </span>
+          <span className="text-xs" style={{ color: '#374151' }}>·</span>
+          <span className="text-xs" style={{ color: '#374151' }}>
+            {relativeTime(block.last_transaction_at)}
+          </span>
         </div>
       ) : (
-        <div className="text-gray-700 text-xs">Нет операций</div>
+        <span className="text-xs" style={{ color: '#374151' }}>Нет операций</span>
       )}
     </button>
   );

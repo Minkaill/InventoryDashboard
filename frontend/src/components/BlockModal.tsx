@@ -36,10 +36,10 @@ const statusLabel: Record<Status, string> = {
   critical: 'Критично',
 };
 
-const statusClass: Record<Status, string> = {
-  ok: 'bg-green-950 text-green-400 border-green-900',
-  low: 'bg-orange-950 text-orange-400 border-orange-900',
-  critical: 'bg-red-950 text-red-400 border-red-900',
+const statusColor: Record<Status, string> = {
+  ok: '#22c55e',
+  low: '#f59e0b',
+  critical: '#ef4444',
 };
 
 export default function BlockModal({ block, onClose, onBlockUpdate, onShowToast }: Props) {
@@ -60,9 +60,7 @@ export default function BlockModal({ block, onClose, onBlockUpdate, onShowToast 
   }, [block.id]);
 
   useEffect(() => {
-    if (activeAction) {
-      quantityRef.current?.focus();
-    }
+    if (activeAction) quantityRef.current?.focus();
   }, [activeAction]);
 
   const openAction = (type: ActionType) => {
@@ -87,8 +85,7 @@ export default function BlockModal({ block, onClose, onBlockUpdate, onShowToast 
     try {
       const updated = await addTransaction(block.id, activeAction!, qty, note || undefined);
       onBlockUpdate(updated);
-      const newHistory = await getHistory(block.id);
-      setHistory(newHistory);
+      setHistory(await getHistory(block.id));
       onShowToast(
         activeAction === 'incoming' ? `+${qty} добавлено` : `−${qty} списано`,
         'success'
@@ -108,70 +105,117 @@ export default function BlockModal({ block, onClose, onBlockUpdate, onShowToast 
     if (e.key === 'Escape') cancelAction();
   };
 
+  const inputStyle = {
+    background: '#111318',
+    border: '1px solid #1e2028',
+    color: '#f9fafb',
+    borderRadius: '8px',
+    padding: '10px 14px',
+    fontSize: '14px',
+    width: '100%',
+    outline: 'none',
+    transition: 'border-color 0.15s',
+  };
+
   return (
     <div
-      className="fixed inset-0 bg-black/75 backdrop-blur-sm z-40 flex items-end md:items-center justify-center"
+      className="fixed inset-0 z-40 flex items-end md:items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="bg-gray-900 w-full md:max-w-lg rounded-t-3xl md:rounded-3xl border border-gray-800 max-h-[92vh] flex flex-col overflow-hidden"
+        className="w-full md:max-w-sm flex flex-col overflow-hidden"
+        style={{
+          background: '#16181d',
+          border: '1px solid #1e2028',
+          borderRadius: '16px 16px 0 0',
+          maxHeight: '90vh',
+        }}
+        // on md+ round all corners
+        ref={el => {
+          if (el && window.innerWidth >= 768) {
+            el.style.borderRadius = '16px';
+          }
+        }}
         onClick={e => e.stopPropagation()}
       >
 
-        {/* Header */}
-        <div className="flex-shrink-0 p-6 pb-5 border-b border-gray-800">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
+        {/* ── Header ── */}
+        <div
+          className="flex-shrink-0 px-5 py-4"
+          style={{ borderBottom: '1px solid #1e2028' }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div
-                className="w-2.5 h-2.5 rounded-full mb-2"
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                 style={{ backgroundColor: block.color }}
               />
-              <h2 className="text-xl font-bold text-white truncate">{block.name}</h2>
-              <div className="flex items-end gap-3 mt-1">
-                <span
-                  className="text-5xl font-black tabular-nums leading-none"
-                  style={{ color: block.color }}
-                >
-                  {block.quantity}
-                </span>
-                <span className={`text-xs px-2 py-1 rounded-full font-semibold border mb-1 ${statusClass[status]}`}>
-                  {statusLabel[status]}
-                </span>
-              </div>
+              <span className="text-sm font-medium text-white truncate">{block.name}</span>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-600 hover:text-white transition-colors p-1 flex-shrink-0 mt-1"
-              aria-label="Закрыть"
+              className="p-1.5 rounded-lg transition-colors flex-shrink-0"
+              style={{ color: '#4b5563' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#9ca3af'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#4b5563'; }}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
+
+          {/* Quantity + status */}
+          <div className="flex items-end justify-between mt-4">
+            <span
+              className="font-display tabular-nums leading-none text-white"
+              style={{ fontSize: '3.5rem' }}
+            >
+              {block.quantity}
+            </span>
+            <span
+              className="text-xs font-medium mb-1.5 px-2 py-1 rounded-md"
+              style={{
+                color: statusColor[status],
+                background: statusColor[status] + '18',
+              }}
+            >
+              {statusLabel[status]}
+            </span>
+          </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex-shrink-0 p-6 pb-5 border-b border-gray-800">
+        {/* ── Actions ── */}
+        <div
+          className="flex-shrink-0 px-5 py-4"
+          style={{ borderBottom: '1px solid #1e2028' }}
+        >
           {!activeAction ? (
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
                 onClick={() => openAction('incoming')}
-                className="flex-1 bg-green-950 hover:bg-green-900 text-green-400 font-semibold py-3 rounded-xl transition-colors text-sm border border-green-900 hover:border-green-700"
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                style={{ background: '#1e2028', color: '#f9fafb', border: '1px solid #2a2d38' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#2a2d38'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#1e2028'; }}
               >
                 Приход +
               </button>
               <button
                 onClick={() => openAction('outgoing')}
-                className="flex-1 bg-red-950 hover:bg-red-900 text-red-400 font-semibold py-3 rounded-xl transition-colors text-sm border border-red-900 hover:border-red-700"
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                style={{ background: 'transparent', color: '#6b7280', border: '1px solid #1e2028' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#1e2028'; (e.currentTarget as HTMLElement).style.color = '#9ca3af'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#6b7280'; }}
               >
                 Расход −
               </button>
             </div>
           ) : (
-            <div className="space-y-3">
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-widest">
-                {activeAction === 'incoming' ? '↑ Приход' : '↓ Расход'}
+            <div className="space-y-2.5">
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#374151' }}>
+                {activeAction === 'incoming' ? 'Приход' : 'Расход'}
               </p>
               <input
                 ref={quantityRef}
@@ -181,32 +225,38 @@ export default function BlockModal({ block, onClose, onBlockUpdate, onShowToast 
                 value={quantity}
                 onChange={e => setQuantity(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 text-lg font-semibold tabular-nums"
+                style={{ ...inputStyle, fontSize: '16px', fontWeight: '600' }}
+                onFocus={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2a2d38'; }}
+                onBlur={e => { (e.currentTarget as HTMLElement).style.borderColor = '#1e2028'; }}
               />
               <input
                 type="text"
-                placeholder="Комментарий (необязательно)"
+                placeholder="Комментарий"
                 value={note}
                 onChange={e => setNote(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 text-sm"
+                style={inputStyle}
+                onFocus={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2a2d38'; }}
+                onBlur={e => { (e.currentTarget as HTMLElement).style.borderColor = '#1e2028'; }}
               />
-              <div className="flex gap-3">
+              <div className="flex gap-2 pt-0.5">
                 <button
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className={`flex-1 font-semibold py-3 rounded-xl transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
-                    activeAction === 'incoming'
-                      ? 'bg-green-900 hover:bg-green-800 text-green-200'
-                      : 'bg-red-900 hover:bg-red-800 text-red-200'
-                  }`}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                  style={{ background: '#1e2028', color: '#f9fafb', border: '1px solid #2a2d38' }}
+                  onMouseEnter={e => { if (!submitting) (e.currentTarget as HTMLElement).style.background = '#2a2d38'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#1e2028'; }}
                 >
                   {submitting ? 'Сохранение...' : 'Подтвердить'}
                 </button>
                 <button
                   onClick={cancelAction}
                   disabled={submitting}
-                  className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-400 font-semibold py-3 rounded-xl transition-colors text-sm"
+                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                  style={{ background: 'transparent', color: '#6b7280', border: '1px solid #1e2028' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#1e2028'; (e.currentTarget as HTMLElement).style.color = '#9ca3af'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#6b7280'; }}
                 >
                   Отмена
                 </button>
@@ -215,43 +265,44 @@ export default function BlockModal({ block, onClose, onBlockUpdate, onShowToast 
           )}
         </div>
 
-        {/* History */}
-        <div className="flex-1 overflow-y-auto p-6 pt-5">
-          <p className="text-xs text-gray-600 uppercase tracking-widest font-semibold mb-4">История</p>
+        {/* ── History ── */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <p className="text-xs font-medium uppercase tracking-wider mb-3" style={{ color: '#374151' }}>
+            История
+          </p>
 
           {loadingHistory ? (
-            <p className="text-gray-600 text-sm">Загрузка...</p>
+            <p className="text-xs" style={{ color: '#374151' }}>Загрузка...</p>
           ) : history.length === 0 ? (
-            <p className="text-gray-700 text-sm">Нет операций</p>
+            <p className="text-xs" style={{ color: '#374151' }}>Нет операций</p>
           ) : (
-            <div className="space-y-1">
-              {history.map(t => (
+            <div>
+              {history.map((t, i) => (
                 <div
                   key={t.id}
-                  className="flex items-center gap-3 py-2.5 border-b border-gray-800/60 last:border-0"
+                  className="flex items-center gap-3 py-2.5"
+                  style={{
+                    borderBottom: i < history.length - 1 ? '1px solid #1e2028' : 'none',
+                  }}
                 >
                   <span
-                    className={`text-base font-bold w-5 text-center flex-shrink-0 ${
-                      t.type === 'incoming' ? 'text-green-500' : 'text-red-500'
-                    }`}
+                    className="text-xs font-bold w-4 text-center flex-shrink-0"
+                    style={{ color: t.type === 'incoming' ? '#22c55e' : '#ef4444' }}
                   >
-                    {t.type === 'incoming' ? '↑' : '↓'}
+                    {t.type === 'incoming' ? '+' : '−'}
                   </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span
-                        className={`font-semibold text-sm tabular-nums ${
-                          t.type === 'incoming' ? 'text-green-400' : 'text-red-400'
-                        }`}
-                      >
-                        {t.type === 'incoming' ? '+' : '−'}{t.quantity}
-                      </span>
-                      {t.note && (
-                        <span className="text-gray-600 text-xs truncate">{t.note}</span>
-                      )}
-                    </div>
-                    <div className="text-gray-700 text-xs mt-0.5">{relativeTime(t.created_at)}</div>
-                  </div>
+                  <span
+                    className="text-sm font-semibold tabular-nums flex-shrink-0"
+                    style={{ color: '#f9fafb', minWidth: '2.5rem' }}
+                  >
+                    {t.quantity}
+                  </span>
+                  <span className="text-xs truncate flex-1" style={{ color: '#4b5563' }}>
+                    {t.note || '—'}
+                  </span>
+                  <span className="text-xs flex-shrink-0" style={{ color: '#374151' }}>
+                    {relativeTime(t.created_at)}
+                  </span>
                 </div>
               ))}
             </div>

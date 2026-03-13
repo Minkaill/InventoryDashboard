@@ -10,33 +10,36 @@ interface Props {
   onShowToast: (message: string, type: Toast['type']) => void;
 }
 
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-}
-
 export default function BasementView({ blocks, lastUpdated, onBlockUpdate, onShowToast }: Props) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const selectedBlock = selectedId != null ? blocks.find(b => b.id === selectedId) ?? null : null;
 
-  const selectedBlock = selectedId != null
-    ? blocks.find(b => b.id === selectedId) ?? null
-    : null;
+  const time = lastUpdated?.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const total = blocks.reduce((s, b) => s + b.quantity, 0);
 
   return (
-    <div className="min-h-screen bg-gray-950 p-4 md:p-8">
-      <div className="max-w-5xl mx-auto">
+    <>
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
 
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-black text-white tracking-tight">Подвал</h1>
-          {lastUpdated && (
-            <p className="text-gray-600 text-sm mt-1">
-              Обновлено в {formatTime(lastUpdated)}
+        {/* Top bar */}
+        <div
+          className="flex items-center justify-between mb-8 pb-5"
+          style={{ borderBottom: '1px solid #1e2028' }}
+        >
+          <div>
+            <h1 className="font-display text-white text-2xl leading-none">Daim Coffee</h1>
+            <p className="text-xs mt-1" style={{ color: '#4b5563' }}>Cold Brew · склад</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-semibold text-white tabular-nums">{total} шт.</p>
+            <p className="text-xs mt-0.5" style={{ color: '#4b5563' }}>
+              {time ? `обновлено в ${time}` : '—'}
             </p>
-          )}
+          </div>
         </div>
 
-        {/* Blocks grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {/* Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {blocks.map(block => (
             <FlavorBlock
               key={block.id}
@@ -55,6 +58,6 @@ export default function BasementView({ blocks, lastUpdated, onBlockUpdate, onSho
           onShowToast={onShowToast}
         />
       )}
-    </div>
+    </>
   );
 }
