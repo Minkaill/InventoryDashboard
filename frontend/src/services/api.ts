@@ -1,6 +1,6 @@
 import { Block, Transaction } from '../types';
 
-const BASE = '/api';
+const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api';
 
 export async function getBlocks(): Promise<Block[]> {
   const res = await fetch(`${BASE}/blocks`);

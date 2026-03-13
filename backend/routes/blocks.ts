@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import db from '../db';
+import client from '../db';
 
 const router = Router();
 
@@ -14,18 +14,29 @@ const blockWithLastTx = `
   )
 `;
 
-router.get('/', (_req: Request, res: Response) => {
-  const blocks = db.prepare(blockWithLastTx + ' ORDER BY b.id').all();
-  res.json(blocks);
+router.get('/', async (_req: Request, res: Response) => {
+  try {
+    const { rows } = await client.execute(blockWithLastTx + ' ORDER BY b.id');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
-router.get('/:id', (req: Request, res: Response) => {
-  const block = db.prepare('SELECT * FROM blocks WHERE id = ?').get(req.params.id);
-  if (!block) return res.status(404).json({ error: 'Block not found' });
-  res.json(block);
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const { rows } = await client.execute({
+      sql: 'SELECT * FROM blocks WHERE id = ?',
+      args: [req.params.id],
+    });
+    if (!rows[0]) return res.status(404).json({ error: 'Block not found' });
+    res.json(rows[0]);
+  } catch {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
-router.post('/:id/transaction', (req: Request, res: Response) => {
+router.post('/:id/transaction', async (req: Request, res: Response) => {
   const { type, quantity, note } = req.body as {
     type: string;
     quantity: number;
@@ -39,39 +50,51 @@ router.post('/:id/transaction', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Количество должно быть положительным целым числом' });
   }
 
-  const block = db.prepare('SELECT * FROM blocks WHERE id = ?').get(req.params.id) as {
-    id: number;
-    quantity: number;
-  } | undefined;
+  try {
+    const { rows } = await client.execute({
+      sql: 'SELECT * FROM blocks WHERE id = ?',
+      args: [req.params.id],
+    });
+    if (!rows[0]) return res.status(404).json({ error: 'Block not found' });
 
-  if (!block) return res.status(404).json({ error: 'Block not found' });
+    const currentQty = rows[0].quantity as number;
+    const newQuantity = type === 'incoming' ? currentQty + quantity : currentQty - quantity;
 
-  const newQuantity = type === 'incoming'
-    ? block.quantity + quantity
-    : block.quantity - quantity;
+    if (newQuantity < 0) {
+      return res.status(400).json({ error: 'Недостаточно товара на складе' });
+    }
 
-  if (newQuantity < 0) {
-    return res.status(400).json({ error: 'Недостаточно товара на складе' });
+    await client.batch([
+      {
+        sql: 'UPDATE blocks SET quantity = ? WHERE id = ?',
+        args: [newQuantity, req.params.id],
+      },
+      {
+        sql: 'INSERT INTO transactions (block_id, type, quantity, note) VALUES (?, ?, ?, ?)',
+        args: [req.params.id, type, quantity, note ?? null],
+      },
+    ], 'write');
+
+    const updated = await client.execute({
+      sql: blockWithLastTx + ' WHERE b.id = ?',
+      args: [req.params.id],
+    });
+    res.json(updated.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
-
-  const doTransaction = db.transaction(() => {
-    db.prepare('UPDATE blocks SET quantity = ? WHERE id = ?').run(newQuantity, req.params.id);
-    db.prepare(
-      'INSERT INTO transactions (block_id, type, quantity, note) VALUES (?, ?, ?, ?)'
-    ).run(req.params.id, type, quantity, note ?? null);
-  });
-
-  doTransaction();
-
-  const updated = db.prepare(blockWithLastTx + ' WHERE b.id = ?').get(req.params.id);
-  res.json(updated);
 });
 
-router.get('/:id/history', (req: Request, res: Response) => {
-  const history = db.prepare(
-    'SELECT * FROM transactions WHERE block_id = ? ORDER BY created_at DESC LIMIT 50'
-  ).all(req.params.id);
-  res.json(history);
+router.get('/:id/history', async (req: Request, res: Response) => {
+  try {
+    const { rows } = await client.execute({
+      sql: 'SELECT * FROM transactions WHERE block_id = ? ORDER BY created_at DESC LIMIT 50',
+      args: [req.params.id],
+    });
+    res.json(rows);
+  } catch {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
 export default router;
